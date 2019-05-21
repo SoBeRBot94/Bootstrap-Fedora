@@ -91,11 +91,13 @@
 
   - name: Install required packages
     dnf:
-      name: [ 'chrome-gnome-shell', 'dconf-editor', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'most', 'tree', 'wipe']
+      name: [ 'chrome-gnome-shell', 'dconf-editor', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'most', 'tree', 'wipe', 'wl-clipboard']
       state: present
       enablerepo: "{{ item }}"
     with_items:
       - google-chrome
+    tags:
+      - packages
 
   - name: Fetch ccat tarball
     get_url:
@@ -219,6 +221,33 @@
       - { name: 'user.email', value: 'sudarsan.bhargavan94@gmail.com' }
       - { name: 'core.editor', value: 'nvim' }
       - { name: 'core.autocrlf', value: 'input' }
+
+  - name: Create .ssh directory
+    become_user: SoBeRBot94
+    file:
+      path: ~SoBeRBot94/.ssh/
+      state: directory
+      owner: SoBeRBot94
+      group: SoBeRBot94
+      mode: 0700
+
+  - name: Generate openssh keypairs for github
+    become_user: SoBeRBot94
+    openssh_keypair:
+      path: ~SoBeRBot94/.ssh/ux305la_github
+      size: 4096
+      type: rsa
+      owner: SoBeRBot94
+      group: SoBeRBot94
+
+  - name: Set permissions to the generated ssh keyfiles
+    file:
+      path: "~SoBeRBot94/.ssh/{{ item.files }}"
+      state: touch
+      mode: "{{ item.permissions }}"
+    with_items:
+      - { files: 'ux305la_github.pub', permissions: '0644' }
+      - { files: 'ux305la_github', permissions: '0600' }
 
   - name: Clone dotfiles repo
     become_user: SoBeRBot94
