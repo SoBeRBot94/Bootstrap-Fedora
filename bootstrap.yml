@@ -1,0 +1,533 @@
+# vi: set ft=yaml.ansible :
+---
+- hosts: UX305LA
+  become: yes
+  gather_facts: no
+  pre_tasks:
+    - name: Update dnf cache
+      raw: sudo dnf -y update -x kernel*
+
+  vars:
+    users:
+        - root
+        - SoBeRBot94
+
+  tasks:
+
+  - name: Disable SELinux
+    lineinfile:
+      path: /etc/selinux/config
+      regexp: '^SELINUX='
+      line: 'SELINUX=disabled'
+      state: present
+
+  - name: Create temporary and temporary-downloads directories
+    file:
+      path: ./{{ item }}
+      state: directory
+    with_items:
+      - tmp
+      - tmp-downloads
+
+  - name: Fetch stable kernels
+    get_url:
+      url: https://kojipkgs.fedoraproject.org//packages/kernel/5.0.12/300.fc30/x86_64/{{ item }}
+      dest: ./tmp-downloads/{{ item }}
+      mode: 0744
+    with_items:
+      - kernel-5.0.12-300.fc30.x86_64.rpm
+      - kernel-core-5.0.12-300.fc30.x86_64.rpm
+      - kernel-modules-5.0.12-300.fc30.x86_64.rpm
+      - kernel-modules-extra-5.0.12-300.fc30.x86_64.rpm
+      - kernel-devel-5.0.12-300.fc30.x86_64.rpm
+
+  - shell: ls ./tmp-downloads/kernel*
+    register: kernel_rpms
+
+  - name: Install stable kernels
+    dnf:
+      name: "{{ kernel_rpms.stdout_lines }}"
+      state: present
+      allow_downgrade: yes
+
+  - name: Reconfigure bootloader
+    raw: sudo grub2-mkconfig -o /boot/efi/EFI/fedora/grub.cfg
+
+  - name: Enable dnf cache
+    lineinfile:
+      path: /etc/dnf/dnf.conf
+      line: 'keepcache=1'
+      state: present
+
+  - name: Fetch rpm fusion packages
+    get_url:
+      url: https://download1.rpmfusion.org/{{ item }}/fedora/rpmfusion-{{ item }}-release-rawhide.noarch.rpm
+      dest: ./tmp-downloads/rpmfusion-{{ item }}-release-rawhide.noarch.rpm
+      mode: 0744
+    with_items:
+      - free
+      - nonfree
+
+  - shell: ls ./tmp-downloads/rpmfusion*
+    register: rpmfusion_repos
+
+  - name: Install rpm fusion repos
+    dnf:
+      name: "{{ rpmfusion_repos.stdout_lines }}"
+      state: present
+
+  - name: Install fedora workstation repositories
+    dnf:
+      name: fedora-workstation-repositories
+      state: present
+
+  - name: Remove libreoffice packages
+    raw: sudo dnf -y remove libreoffice*
+
+  - name: Remove unwanted packages
+    dnf:
+      name: ['abrt', 'abrt-cli', 'abrt-desktop', 'gnome-boxes', 'rhythmbox']
+      state: absent
+
+  - name: Install required packages
+    dnf:
+      name: [ 'chrome-gnome-shell', 'dconf-editor', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'most', 'tree', 'wipe']
+      state: present
+      enablerepo: "{{ item }}"
+    with_items:
+      - google-chrome
+
+  - name: Fetch ccat tarball
+    get_url:
+      url: https://github.com/jingweno/ccat/releases/download/v1.1.0/linux-amd64-1.1.0.tar.gz
+      dest: ./tmp-downloads/ccat.tar.gz
+
+  - name: Extract ccat tarball
+    command: tar -C ./tmp/ -xvzf ./tmp-downloads/ccat.tar.gz
+
+  - name: Install ccat
+    copy:
+      src: ./tmp/linux-amd64-1.1.0/ccat
+      dest: /usr/local/bin
+      mode: 0755
+
+  - name: Setup machine for kvm virtualization
+    dnf:
+      name: '@virtualization'
+      state: present
+    notify:
+      - Enable libvirtd service
+
+  - name: Create libvirt group
+    group:
+      name: libvirt
+      state: present
+
+  - name: Add SoBeRBot94 to dnsmasq, kvm, libvirt, qemu groups
+    user:
+      name: SoBeRBot94
+      groups: libvirt
+      append: yes
+
+  - name: Create polkit rules file
+    file:
+      path: /etc/polkit-1/rules.d/80-libvirt.rules
+      owner: root
+      group: root
+      mode: 0644
+      state: touch
+
+  - name: Edit polkit rules for granting access to an unprivilaged user to libvirt APIs
+    copy:
+      content: |
+        polkit.addRule(function(action, subject) {
+        if (action.id == "org.libvirt.unix.manage" && subject.isInGroup("libvirt")) {
+        return polkit.Result.YES;
+        }
+        });
+      dest: /etc/polkit-1/rules.d/80-libvirt.rules
+    notify:
+      - Start libvirtd service
+
+  - name: Install vagrant
+    dnf:
+      name: vagrant
+      state: present
+
+  - name: Fetch terraform zip archive
+    get_url:
+      url: 'https://releases.hashicorp.com/terraform/0.11.13/terraform_0.11.13_linux_amd64.zip'
+      dest: ./tmp-downloads/terraform.zip
+
+  - name: Unzip terraform zip archive
+    unarchive:
+      src: ./tmp-downloads/terraform.zip
+      dest: ./tmp/
+
+  - name: Install terraform
+    copy:
+      src: ./tmp/terraform
+      dest: /usr/local/bin
+      owner: root
+      group: root
+      mode: 0755
+
+  - name: Setup docker-ce repository
+    become: yes
+    command: dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+
+  - name: Setup releasever and basearch for docker-ce repository
+    become: yes
+    command: "{{ item }}"
+    with_items:
+      - sed -i 's/$releasever/29/g' /etc/yum.repos.d/docker-ce.repo
+      - sed -i 's/$basearch/x86_64/g' /etc/yum.repos.d/docker-ce.repo
+    notify:
+      - Clean dnf metadata
+      - Update dnf cache
+
+  - name: Install dnf development packages
+    dnf:
+      name: [ 'containerd.io', 'docker-ce', 'docker-ce-cli', 'python3-lxml', 'neovim', 'python3-neovim', 'python3-psutil', 'python3-virtualenv', 'tunctl', 'util-linux-user', 'zsh']
+      state: present
+      enablerepo: "{{ item }}"
+    with_items:
+      - docker-ce
+
+  - name: Create docker group
+    group:
+      name: docker
+      state: present
+
+  - name: Add SoBeRBot94 to docker group
+    user:
+      name: SoBeRBot94
+      groups: docker
+      append: yes
+    notify:
+      - Enable docker systemd service
+      - Start docker systemd service
+
+  - name: Setup git global configuration
+    become: SoBeRBot94
+    git_config:
+      name: "{{ item.name }}"
+      scope: global
+      value: "{{ item.value }}"
+    with_items:
+      - { name: 'user.name', value: 'SoBeRBot94' }
+      - { name: 'user.email', value: 'sudarsan.bhargavan94@gmail.com' }
+      - { name: 'core.editor', value: 'nvim' }
+      - { name: 'core.autocrlf', value: 'input' }
+
+  - name: Clone dotfiles repo
+    become_user: SoBeRBot94
+    git:
+      repo: https://github.com/SoBeRBot94/DotFiles.git
+      clone: yes
+      dest: ~SoBeRBot94/DotFiles
+
+  - name: Clone oh-my-zsh framework [Root]
+    become: yes
+    become_user: root
+    git:
+      repo: https://github.com/robbyrussell/oh-my-zsh.git
+      clone: yes
+      force: yes
+      depth: 1
+      dest: ~root/.oh-my-zsh
+
+  - name: Clone powerlevel10k theme [Root]
+    become: yes
+    become_user: root
+    git:
+      repo: https://github.com/romkatv/powerlevel10k.git
+      clone: yes
+      force: yes
+      dest: ~root/.oh-my-zsh/custom/themes/powerlevel10k
+
+  - name: Clone oh-my-zsh framework [SoBeRBot94]
+    become: no
+    become_user: SoBeRBot94
+    git:
+      repo: https://github.com/robbyrussell/oh-my-zsh.git
+      clone: yes
+      force: yes
+      depth: 1
+      dest: ~SoBeRBot94/.oh-my-zsh
+
+  - name: Clone powerlevel10k theme [SoBeRBot94]
+    become: yes
+    become_user: SoBeRBot94
+    git:
+      repo: https://github.com/romkatv/powerlevel10k.git
+      clone: yes
+      force: yes
+      dest: ~SoBeRBot94/.oh-my-zsh/custom/themes/powerlevel10k
+
+  - name: Set permissions to oh-my-zsh framework files
+    become: yes
+    file:
+      path: "~{{ item }}/.oh-my-zsh"
+      mode: 0755
+      recurse: yes
+    with_items: "{{ users }}"
+
+  - name: Change default shell to zsh
+    become: no
+    become_user: "{{ item }}"
+    command: chsh -s /usr/bin/zsh
+    with_items: "{{ users }}"
+
+  - name: Remove existing zshrc file [Root]
+    become: yes
+    become_user: root
+    file:
+      path: ~root/.zshrc
+      state: absent
+
+  - name: Remove existing zshrc file [SoBeRBot94]
+    become: no
+    become_user: SoBeRBot94
+    file:
+      path: ~SoBeRBot94/.zshrc
+      state: absent
+
+  - name: Create symbolic links for zshrc [Root]
+    become: yes
+    become_user: root
+    file:
+      src: ~SoBeRBot94/DotFiles/zshrc
+      dest: ~root/.zshrc
+      state: link
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Create symbolic links for zshrc [SoBeRBot94]
+    become: no
+    become_user: SoBeRBot94
+    file:
+      src: ~SoBeRBot94/DotFiles/zshrc
+      dest: ~SoBeRBot94/.zshrc
+      state: link
+      owner: SoBeRBot94
+      group: SoBeRBot94
+      mode: 0644
+
+  - name: Fetch hack font zip
+    get_url:
+      url: https://github.com/ryanoasis/nerd-fonts/releases/download/v2.0.0/Hack.zip
+      dest: ./tmp-downloads/Hack.zip
+
+  - name: Create hack font directory
+    file:
+      path: /usr/share/fonts/Hack
+      state: directory
+      owner: root
+      group: root
+      mode: 0755
+
+  - name: Extract Hack font zip
+    unarchive:
+      src: ./tmp-downloads/Hack.zip
+      dest: /usr/share/fonts/Hack/
+
+  - name: Set text scaling factor
+    become: SoBeRBot94
+    dconf:
+      key: "/org/gnome/desktop/interface/text-scaling-factor"
+      value: '1.15'
+
+  - name: Add flathub remote
+    flatpak_remote:
+      name: flathub
+      flatpakrepo_url: https://flathub.org/repo/flathub.flatpakrepo
+      state: present
+
+  - name: Install required flatpaks
+    flatpak:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - com.axosoft.GitKraken
+      - com.getpostman.Postman
+      - com.slack.Slack
+      - com.spotify.Client
+      - fr.handbrake.ghb
+      - io.github.liberodark.OpenDrive
+      - net.mediaarea.MediaInfo
+      - org.gnome.Logs
+      - org.gnome.Lollypop
+      - org.keepassxc.KeePassXC
+      - org.libreoffice.LibreOffice
+      - org.videolan.VLC
+
+  - name: Set tap to click
+    become: SoBeRBot94
+    dconf:
+      key: "/org/gnome/desktop/peripherals/touchpad/tap-to-click"
+      value: 'true'
+
+  - name: Install gnome-shell-extensions
+    dnf:
+      name: "{{ item }}"
+      state: latest
+    with_items:
+      - gnome-shell-extension-auto-move-windows.noarch
+      - gnome-shell-extension-dash-to-dock.noarch
+      - gnome-shell-extension-disconnect-wifi.noarch
+      - gnome-shell-extension-no-topleft-hot-corner.noarch
+      - gnome-shell-extension-panel-osd.noarch
+      - gnome-shell-extension-refresh-wifi.noarch
+      - gnome-shell-extension-workspace-indicator.noarch
+
+  - name: Enable only required extensions and disable unwanted extenstions
+    become: SoBeRBot94
+    dconf:
+      key: "/org/gnome/shell/enabled-extensions"
+      value: "['user-theme@gnome-shell-extensions.gcampax.github.com']"
+
+  - name: Fetch cursor theme
+    get_url:
+      url: https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/breeze/4:5.15.4.1-0ubuntu1/breeze_5.15.4.1.orig.tar.xz
+      dest: ./tmp-downloads/breeze_cursors.tar.xz
+
+  - name: Extract breeze_cursors tarball
+    command: tar -C ./tmp/ -xf ./tmp-downloads/breeze_cursors.tar.xz
+
+  - name: Create icons directory
+    file:
+      path: /home/SoBeRBot94/.icons
+      state: directory
+      owner: SoBeRBot94
+      group: SoBeRBot94
+
+  - name: Install cursor theme
+    copy:
+      src: ./tmp/breeze-5.15.4.1/cursors/Breeze_Snow/Breeze_Snow
+      dest: /home/SoBeRBot94/.icons/
+      owner: SoBeRBot94
+      group: SoBeRBot94
+
+  - name: Set cursor theme
+    become: SoBeRBot94
+    dconf:
+      key: "/org/gnome/desktop/interface/cursor-theme"
+      value: "'Breeze_Snow'"
+
+  - name: Fetch gnome-shell theme
+    get_url:
+      url: https://github.com/daniruiz/flat-remix-gnome/archive/20190501.zip 
+      dest: ./tmp-downloads/flat_remix_gnome.zip
+
+  - name: Extract flat_remix_gnome zip
+    unarchive:
+      src: ./tmp-downloads/flat_remix_gnome.zip
+      dest: ./tmp/
+
+  - name: Create themes directory
+    file:
+      path: /home/SoBeRBot94/.themes
+      state: directory
+      owner: SoBeRBot94
+      group: SoBeRBot94
+
+  - name: Install gnome-shell theme
+    copy:
+      src: ./tmp/flat-remix-gnome-20190501/Flat-Remix-Darkest-fullPanel
+      dest: /home/SoBeRBot94/.themes/
+      owner: SoBeRBot94
+      group: SoBeRBot94
+
+  - name: Set gnome-shell theme
+    become: SoBeRBot94
+    dconf:
+      key: "/org/gnome/shell/extensions/user-theme/name"
+      value: "'Flat-Remix-Darkest-fullPanel'"
+
+  - name: Fetch gtk theme
+    get_url:
+      url: https://github.com/daniruiz/flat-remix-gtk/archive/20190503.zip
+      dest: ./tmp-downloads/flat_remix_gtk.zip
+
+  - name: Extract flat_remix_gtk zip
+    unarchive:
+      src: ./tmp-downloads/flat_remix_gtk.zip
+      dest: ./tmp/
+
+  - name: Install gtk theme
+    copy:
+      src: ./tmp/flat-remix-gtk-20190503/Flat-Remix-GTK-Blue-Darkest-Solid-NoBorder
+      dest: /home/SoBeRBot94/.themes/
+      owner: SoBeRBot94
+      group: SoBeRBot94
+
+  - name: Set gtk theme
+    become: SoBeRBot94
+    dconf:
+      key: "/org/gnome/desktop/interface/gtk-theme"
+      value: "'Flat-Remix-GTK-Blue-Darkest-Solid-NoBorder'"
+
+  - name: Fetch icon theme
+    get_url:
+      url: https://github.com/keeferrourke/la-capitaine-icon-theme/archive/v0.6.1.zip 
+      dest: ./tmp-downloads/la_capitaine_icons.zip
+
+  - name: Extract la_capitaine_icons zip
+    unarchive:
+      src: ./tmp-downloads/la_capitaine_icons.zip
+      dest: ./tmp/
+
+  - name: Install icon theme
+    copy:
+      src: ./tmp/la-capitaine-icon-theme-0.6.1
+      dest: /home/SoBeRBot94/.icons/
+      owner: SoBeRBot94
+      group: SoBeRBot94
+
+  - name: Set icon theme
+    become: SoBeRBot94
+    dconf:
+      key: "/org/gnome/desktop/interface/icon-theme"
+      value: "'la-capitaine-icon-theme-0.6.1'"
+
+  - name: Enable fractional scaling for high dpi monitors
+    become: SoBeRBot94
+    dconf:
+      key: "/org/gnome/mutter/experimental-features"
+      value: "['scale-monitor-framebuffer']"
+
+  handlers:
+  
+  - name: Clean dnf metadata
+    become: yes
+    command: dnf clean metadata
+
+  - name: Update dnf cache
+    become: yes
+    command: dnf makecache
+
+  - name: Enable docker systemd service
+    become: yes
+    systemd:
+      name: docker
+      enabled: yes
+
+  - name: Start docker systemd service
+    become: yes
+    systemd:
+      name: docker
+      state: restarted
+
+  - name: Enable libvirtd service
+    become: yes
+    systemd:
+      name: libvirtd
+      enabled: yes
+
+  - name: Start libvirtd service
+    become: yes
+    systemd:
+      name: libvirtd
+      state: restarted
