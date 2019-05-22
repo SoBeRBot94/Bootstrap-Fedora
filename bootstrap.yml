@@ -194,6 +194,12 @@
     with_items:
       - docker-ce
 
+  - name: Install pip development packages
+    pip:
+      name: [ 'icdiff' ]
+      state: present
+      executable: pip3
+
   - name: Create docker group
     group:
       name: docker
@@ -218,6 +224,7 @@
       - { name: 'user.email', value: 'sudarsan.bhargavan94@gmail.com' }
       - { name: 'core.editor', value: 'nvim' }
       - { name: 'core.autocrlf', value: 'input' }
+      - { name: 'icdiff.options', value: '--highlight --line-numbers' }
 
   - name: Create .ssh directory
     become_user: SoBeRBot94
