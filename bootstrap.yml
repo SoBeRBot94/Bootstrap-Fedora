@@ -117,8 +117,6 @@
     dnf:
       name: '@virtualization'
       state: present
-    notify:
-      - Enable libvirtd service
 
   - name: Create libvirt group
     group:
@@ -207,7 +205,6 @@
       groups: docker
       append: yes
     notify:
-      - Enable docker systemd service
       - Start docker systemd service
 
   - name: Setup git global configuration
@@ -537,23 +534,11 @@
     become: yes
     command: dnf makecache
 
-  - name: Enable docker systemd service
-    become: yes
-    systemd:
-      name: docker
-      enabled: yes
-
   - name: Start docker systemd service
     become: yes
     systemd:
       name: docker
       state: restarted
-
-  - name: Enable libvirtd service
-    become: yes
-    systemd:
-      name: libvirtd
-      enabled: yes
 
   - name: Start libvirtd service
     become: yes
