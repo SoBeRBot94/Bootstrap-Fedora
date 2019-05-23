@@ -188,7 +188,7 @@
 
   - name: Install dnf development packages
     dnf:
-      name: [ 'containerd.io', 'docker-ce', 'docker-ce-cli', 'python3-lxml', 'neovim', 'python3-neovim', 'python3-psutil', 'python3-virtualenv', 'tunctl', 'util-linux-user', 'zsh']
+      name: [ 'containerd.io', 'docker-ce', 'docker-ce-cli', 'httpie', 'python3-lxml', 'neovim', 'python3-neovim', 'python3-psutil', 'python3-virtualenv', 'tunctl', 'util-linux-user', 'zsh']
       state: present
       enablerepo: "{{ item }}"
     with_items:
@@ -211,6 +211,7 @@
       groups: docker
       append: yes
     notify:
+      - Enable docker systemd service
       - Start docker systemd service
 
   - name: Setup git global configuration
@@ -540,6 +541,12 @@
   - name: Update dnf cache
     become: yes
     command: dnf makecache
+
+  - name: Enable docker systemd service
+    become: yes
+    systemd:
+      name: docker
+      enabled: yes
 
   - name: Start docker systemd service
     become: yes
