@@ -91,13 +91,11 @@
 
   - name: Install required packages
     dnf:
-      name: [ 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'tree', 'wipe', 'wl-clipboard']
+      name: [ 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'snapd', 'tree', 'wipe', 'wl-clipboard']
       state: present
       enablerepo: "{{ item }}"
     with_items:
       - google-chrome
-    tags:
-      - packages
 
   - name: Fetch ccat tarball
     get_url:
@@ -193,6 +191,38 @@
       enablerepo: "{{ item }}"
     with_items:
       - docker-ce
+
+  - name: Fetch atom rpm
+    get_url:
+      url: https://atom-installer.github.com/v1.37.0/atom.x86_64.rpm?s=1557846168&ext=.rpm
+      dest: ./tmp-downloads/atom.x86_64.rpm
+      mode: 0755
+      owner: SoBeRBot94
+      group: SoBeRBot94
+
+  - name: Fetch mailspring rpm
+    get_url:
+      url: https://github.com/Foundry376/Mailspring/releases/download/1.6.1/mailspring-1.6.1-0.1.x86_64.rpm
+      dest: ./tmp-downloads/mailspring.x86_64.rpm
+      mode: 0755
+      owner: SoBeRBot94
+      group: SoBeRBot94
+    tags:
+      - mailspring
+
+  - name: Install atom
+    become: yes
+    dnf:
+      name: ./tmp-downloads/atom.x86_64.rpm
+      state: present
+
+  - name: Install mailspring
+    become: yes
+    dnf:
+      name: ./tmp-downloads/mailspring.x86_64.rpm
+      state: present
+    tags:
+      - mailspring
 
   - name: Install pip development packages
     pip:
