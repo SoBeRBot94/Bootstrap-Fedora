@@ -207,8 +207,14 @@
       mode: 0755
       owner: SoBeRBot94
       group: SoBeRBot94
-    tags:
-      - mailspring
+
+  - name: Fetch skype rpm
+    get_url:
+      url: https://repo.skype.com/latest/skypeforlinux-64.rpm 
+      dest: ./tmp-downloads/skypeforlinux-64.rpm
+      mode: 0755
+      owner: SoBeRBot94
+      group: SoBeRBot94
 
   - name: Install atom
     become: yes
@@ -221,8 +227,12 @@
     dnf:
       name: ./tmp-downloads/mailspring.x86_64.rpm
       state: present
-    tags:
-      - mailspring
+
+  - name: Install skype
+    become: yes
+    dnf:
+      name: ./tmp-downloads/skypeforlinux-64.rpm
+      state: present
 
   - name: Install pip development packages
     pip:
