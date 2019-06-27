@@ -11,6 +11,10 @@
     users:
         - root
         - SoBeRBot94
+    openvpn_username: vpnbook
+    openvpn_password: 94zLQn3
+    mailspring_version: 1.6.2
+    mailspring_rpm: mailspring-1.6.2-0.1.x86_64.rpm
 
   tasks:
 
@@ -91,7 +95,7 @@
 
   - name: Install required packages
     dnf:
-      name: [ 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'snapd', 'tree', 'wipe', 'wl-clipboard']
+      name: [ 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'snapd', 'tree', 'wipe', 'wl-clipboard']
       state: present
       enablerepo: "{{ item }}"
     with_items:
@@ -186,11 +190,69 @@
 
   - name: Install dnf development packages
     dnf:
-      name: [ 'containerd.io', 'docker-ce', 'docker-ce-cli', 'httpie', 'python3-lxml', 'neovim', 'python3-neovim', 'python3-psutil', 'python3-virtualenv', 'tunctl', 'util-linux-user', 'zsh']
+      name: [ 'containerd.io', 'docker-ce', 'docker-ce-cli', 'httpie', 'python3-lxml', 'neovim', 'python3-neovim', 'python3-psutil', 'python3-virtualenv', 'supervisor', 'tunctl', 'util-linux-user', 'zsh']
       state: present
       enablerepo: "{{ item }}"
     with_items:
       - docker-ce
+    notify:
+      - Enable supervisord service
+    tags:
+      - dnf-devel
+
+  - name: Setup openvpn supervisor conf
+    become: yes
+    file:
+      src: ~SoBeRBot94/DotFiles/openVPN.conf
+      dest: /etc/supervisord.d/openVPN.ini
+      state: link
+      owner: root
+      group: root
+    tags:
+      - openvpn
+
+  - name: Fetch vpnbook openvpn certifiacte bundles
+    get_url:
+      url: https://www.vpnbook.com/free-openvpn-account/VPNBook.com-OpenVPN-FR1.zip
+      dest: ./tmp-downloads/VPNBook.com-OpenVPN-FR1.zip
+    tags:
+      - openvpn
+
+  - name: Create vpnbook directory
+    file:
+      path: ~SoBeRBot94/VPNBook
+      state: directory
+      owner: SoBeRBot94
+      group: SoBeRBot94
+      mode: '0755'
+    tags:
+      - openvpn
+
+  - name: Setup vpnbook openvpn certificates
+    unarchive:
+      src: ./tmp-downloads/VPNBook.com-OpenVPN-FR1.zip
+      dest: ~SoBeRBot94/VPNBook
+      owner: SoBeRBot94
+      group: SoBeRBot94
+    tags:
+      - openvpn
+
+  - name: Setup vpnbook openvpn credentials
+    template:
+      src: ./templates/credentials.txt.j2
+      dest: ~SoBeRBot94/VPNBook/credentials.txt
+      owner: SoBeRBot94
+      group: SoBeRBot94
+    tags:
+      - openvpn
+
+  - name: Setup openvpn to fetch credentials from credentials file
+    lineinfile:
+      path: ~SoBeRBot94/VPNBook/vpnbook-fr1-tcp80.ovpn
+      regexp: '^auth-user-pass'
+      line: auth-user-pass credentials.txt
+    tags:
+      - openvpn
 
   - name: Fetch atom rpm
     get_url:
@@ -202,11 +264,13 @@
 
   - name: Fetch mailspring rpm
     get_url:
-      url: https://github.com/Foundry376/Mailspring/releases/download/1.6.1/mailspring-1.6.1-0.1.x86_64.rpm
-      dest: ./tmp-downloads/mailspring.x86_64.rpm
+      url: https://github.com/Foundry376/Mailspring/releases/download/{{ mailspring_version }}/{{ mailspring_rpm }}
+      dest: ./tmp-downloads/{{ mailspring_rpm }}
       mode: 0755
       owner: SoBeRBot94
       group: SoBeRBot94
+    tags:
+      - mailspring
 
   - name: Fetch skype rpm
     get_url:
@@ -225,8 +289,10 @@
   - name: Install mailspring
     become: yes
     dnf:
-      name: ./tmp-downloads/mailspring.x86_64.rpm
+      name: ./tmp-downloads/{{ mailspring_rpm }}
       state: present
+    tags:
+      - mailspring
 
   - name: Install skype
     become: yes
@@ -441,6 +507,27 @@
       group: SoBeRBot94
       state: touch
 
+  - name: Clone ctrl-p repo [SoBeRBot94]
+    become: yes
+    become_user: SoBeRBot94
+    git:
+      repo: https://github.com/ctrlpvim/ctrlp.vim.git
+      clone: yes
+      force: yes
+      dest: ~SoBeRBot94/.config/nvim/bundle/ctrlp.vim
+    tags:
+      - ctrlp
+
+  - name: Change ownership of ctrl-p
+    become: yes
+    file:
+      path: ~SoBeRBot94/.config/nvim/bundle/ctrlp.vim
+      owner: SoBeRBot94
+      group: SoBeRBot94
+      state: touch
+    tags:
+      - ctrlp
+
   - name: Add flathub remote
     flatpak_remote:
       name: flathub
@@ -609,6 +696,12 @@
   - name: Update dnf cache
     become: yes
     command: dnf makecache
+
+  - name: Enable supervisord service
+    become: yes
+    systemd:
+      name: supervisord
+      enabled: yes
 
   - name: Enable docker systemd service
     become: yes
