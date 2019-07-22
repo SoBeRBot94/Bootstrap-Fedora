@@ -7,14 +7,24 @@
     - name: Update dnf cache
       raw: sudo dnf -y update -x kernel*
 
+    - name: Set dnf configuration
+      lineinfile:
+        path: /etc/dnf/dnf.conf
+        line: exclude=kernel*
+        state: present
+
   vars:
     users:
         - root
         - SoBeRBot94
+
+    golang_version: go1.12.6.linux-amd64
+
+    mailspring_version: 1.6.3
+    mailspring_rpm: mailspring-1.6.3-0.1.x86_64.rpm 
+        
     openvpn_username: vpnbook
     openvpn_password: 94zLQn3
-    mailspring_version: 1.6.2
-    mailspring_rpm: mailspring-1.6.2-0.1.x86_64.rpm
 
   tasks:
 
@@ -95,11 +105,13 @@
 
   - name: Install required packages
     dnf:
-      name: [ 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'snapd', 'tree', 'wipe', 'wl-clipboard']
+      name: [ 'bleachbit', 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'pandoc', 'snapd', 'tree', 'wipe', 'wl-clipboard']
       state: present
       enablerepo: "{{ item }}"
     with_items:
       - google-chrome
+    tags:
+      - packages
 
   - name: Fetch ccat tarball
     get_url:
@@ -199,6 +211,22 @@
       - Enable supervisord service
     tags:
       - dnf-devel
+
+  - name: Fetch golang tarball
+    get_url: 
+      url: https://dl.google.com/go/{{ golang_version }}.tar.gz
+      dest: ./tmp-downloads/{{ golang_version }}.tar.gz
+      mode: 0755
+      owner: SoBeRBot94
+      group: SoBeRBot94
+    tags:
+      - golang
+
+  - name: Extract tarball
+    become: yes
+    command: tar -C /usr/local/ -xvzf ./tmp-downloads/{{ golang_version }}.tar.gz
+    tags:
+      - golang
 
   - name: Setup openvpn supervisor conf
     become: yes
