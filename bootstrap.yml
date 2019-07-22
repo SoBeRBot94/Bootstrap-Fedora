@@ -137,7 +137,7 @@
       name: libvirt
       state: present
 
-  - name: Add SoBeRBot94 to dnsmasq, kvm, libvirt, qemu groups
+  - name: Add SoBeRBot94 to libvirt group
     user:
       name: SoBeRBot94
       groups: libvirt
@@ -150,6 +150,17 @@
       group: root
       mode: 0644
       state: touch
+
+  - name: Update libvirtd.conf to grant access to an unprivilaged user
+    replace:
+      path: /etc/libvirt/libvirtd.conf
+      regexp: "{{ item.regexp }}"
+      replace: "{{ item.replace }}"
+    with_items:
+      - { regexp: '^#unix_sock_group = "libvirt"', replace: 'unix_sock_group = "libvirt"' }
+      - { regexp: '^#unix_sock_rw_perms = "0770"', replace: 'unix_sock_rw_perms = "0770"'}
+    tags:
+      - libvirt
 
   - name: Edit polkit rules for granting access to an unprivilaged user to libvirt APIs
     copy:
