@@ -105,7 +105,7 @@
 
   - name: Install required packages
     dnf:
-      name: [ 'bleachbit', 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'pandoc', 'snapd', 'tree', 'wipe', 'wl-clipboard']
+      name: [ 'arm-image-installer', 'bleachbit', 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'pandoc', 'snapd', 'tree', 'wipe', 'wl-clipboard']
       state: present
       enablerepo: "{{ item }}"
     with_items:
@@ -238,6 +238,13 @@
     command: tar -C /usr/local/ -xvzf ./tmp-downloads/{{ golang_version }}.tar.gz
     tags:
       - golang
+
+  - name: Clone dotfiles repo
+    become_user: SoBeRBot94
+    git:
+      repo: https://github.com/SoBeRBot94/DotFiles.git
+      clone: yes
+      dest: ~SoBeRBot94/DotFiles
 
   - name: Setup openvpn supervisor conf
     become: yes
@@ -398,13 +405,6 @@
     with_items:
       - { files: 'ux305la_github.pub', permissions: '0644' }
       - { files: 'ux305la_github', permissions: '0600' }
-
-  - name: Clone dotfiles repo
-    become_user: SoBeRBot94
-    git:
-      repo: https://github.com/SoBeRBot94/DotFiles.git
-      clone: yes
-      dest: ~SoBeRBot94/DotFiles
 
   - name: Clone oh-my-zsh framework [Root]
     become: yes
