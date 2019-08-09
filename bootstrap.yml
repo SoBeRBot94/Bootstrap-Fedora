@@ -179,6 +179,16 @@
       name: vagrant
       state: present
 
+  - name: Install vagrant plugins [ dnf ]
+    dnf:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - vagrant-libvirt
+      - vagrant-sshfs
+    tags:
+      - vagrant-plugins-dnf
+
   - name: Fetch terraform zip archive
     get_url:
       url: 'https://releases.hashicorp.com/terraform/0.11.13/terraform_0.11.13_linux_amd64.zip'
