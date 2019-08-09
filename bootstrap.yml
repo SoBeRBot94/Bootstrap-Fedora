@@ -638,80 +638,19 @@
       key: "/org/gnome/shell/enabled-extensions"
       value: "['user-theme@gnome-shell-extensions.gcampax.github.com']"
 
-  - name: Fetch cursor theme
-    get_url:
-      url: https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/breeze/4:5.15.4.1-0ubuntu1/breeze_5.15.4.1.orig.tar.xz
-      dest: ./tmp-downloads/breeze_cursors.tar.xz
+  - name: Enable Copr Repo for Flat Remix Gnome Shell & GTK Themes
+    command: dnf copr enable daniruiz/flat-remix -y
 
-  - name: Extract breeze_cursors tarball
-    command: tar -C ./tmp/ -xf ./tmp-downloads/breeze_cursors.tar.xz
-
-  - name: Create icons directory
-    file:
-      path: /home/SoBeRBot94/.icons
-      state: directory
-      owner: SoBeRBot94
-      group: SoBeRBot94
-
-  - name: Install cursor theme
-    copy:
-      src: ./tmp/breeze-5.15.4.1/cursors/Breeze_Snow/Breeze_Snow
-      dest: /home/SoBeRBot94/.icons/
-      owner: SoBeRBot94
-      group: SoBeRBot94
-
-  - name: Set cursor theme
-    become: SoBeRBot94
-    dconf:
-      key: "/org/gnome/desktop/interface/cursor-theme"
-      value: "'Breeze_Snow'"
-
-  - name: Fetch gnome-shell theme
-    get_url:
-      url: https://github.com/daniruiz/flat-remix-gnome/archive/20190501.zip 
-      dest: ./tmp-downloads/flat_remix_gnome.zip
-
-  - name: Extract flat_remix_gnome zip
-    unarchive:
-      src: ./tmp-downloads/flat_remix_gnome.zip
-      dest: ./tmp/
-
-  - name: Create themes directory
-    file:
-      path: /home/SoBeRBot94/.themes
-      state: directory
-      owner: SoBeRBot94
-      group: SoBeRBot94
-
-  - name: Install gnome-shell theme
-    copy:
-      src: ./tmp/flat-remix-gnome-20190501/Flat-Remix-Darkest-fullPanel
-      dest: /home/SoBeRBot94/.themes/
-      owner: SoBeRBot94
-      group: SoBeRBot94
+  - name: Install Flat Remix Gnome Shell & GTK Themes
+    dnf:
+      name: [ 'flat-remix-gnome', 'flat-remix-gtk']
+      state: present
 
   - name: Set gnome-shell theme
     become: SoBeRBot94
     dconf:
       key: "/org/gnome/shell/extensions/user-theme/name"
-      value: "'Flat-Remix-Darkest-fullPanel'"
-
-  - name: Fetch gtk theme
-    get_url:
-      url: https://github.com/daniruiz/flat-remix-gtk/archive/20190503.zip
-      dest: ./tmp-downloads/flat_remix_gtk.zip
-
-  - name: Extract flat_remix_gtk zip
-    unarchive:
-      src: ./tmp-downloads/flat_remix_gtk.zip
-      dest: ./tmp/
-
-  - name: Install gtk theme
-    copy:
-      src: ./tmp/flat-remix-gtk-20190503/Flat-Remix-GTK-Blue-Darkest-Solid-NoBorder
-      dest: /home/SoBeRBot94/.themes/
-      owner: SoBeRBot94
-      group: SoBeRBot94
+      value: "'Flat-Remix-Darkest'"
 
   - name: Set gtk theme
     become: SoBeRBot94
@@ -719,28 +658,25 @@
       key: "/org/gnome/desktop/interface/gtk-theme"
       value: "'Flat-Remix-GTK-Blue-Darkest-Solid-NoBorder'"
 
-  - name: Fetch icon theme
-    get_url:
-      url: https://github.com/keeferrourke/la-capitaine-icon-theme/archive/v0.6.1.zip 
-      dest: ./tmp-downloads/la_capitaine_icons.zip
+  - name: Enable Copr Repo for La Capitaine Cursor & Icon Themes
+    command: dnf copr enable tcg/themes -y
 
-  - name: Extract la_capitaine_icons zip
-    unarchive:
-      src: ./tmp-downloads/la_capitaine_icons.zip
-      dest: ./tmp/
+  - name: Install La Capitaine Cursor & Icon Themes
+    dnf:
+      name: [ 'la-capitaine-cursor-theme', 'la-capitaine-cursor-theme' ]
+      state: present
 
-  - name: Install icon theme
-    copy:
-      src: ./tmp/la-capitaine-icon-theme-0.6.1
-      dest: /home/SoBeRBot94/.icons/
-      owner: SoBeRBot94
-      group: SoBeRBot94
+  - name: Set cursor theme
+    become: SoBeRBot94
+    dconf:
+      key: "/org/gnome/desktop/interface/cursor-theme"
+      value: "'la-capitaine-cursor-theme'"
 
   - name: Set icon theme
     become: SoBeRBot94
     dconf:
       key: "/org/gnome/desktop/interface/icon-theme"
-      value: "'la-capitaine-icon-theme-0.6.1'"
+      value: "'la-capitaine-icon-theme'"
 
   - name: Enable fractional scaling for high dpi monitors
     become: SoBeRBot94
