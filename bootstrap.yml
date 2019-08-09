@@ -14,17 +14,29 @@
         state: present
 
   vars:
+
+    atom_package_release_tag: 1564072207
+    atom_version: 1.39.1
+
+    ccat_version: 1.1.0
+    
+    docker_release_version: 30
+
+    golang_version: 1.12.7
+
+    hack_font_version: 2.0.0 
+
+    mailspring_version: 1.6.3
+        
+    openvpn_password: hMN8XQa
+    openvpn_server_location: DE4
+    openvpn_username: vpnbook
+
+    terraform_version: 0.12.6 
+    
     users:
         - root
         - SoBeRBot94
-
-    golang_version: go1.12.6.linux-amd64
-
-    mailspring_version: 1.6.3
-    mailspring_rpm: mailspring-1.6.3-0.1.x86_64.rpm 
-        
-    openvpn_username: vpnbook
-    openvpn_password: 94zLQn3
 
   tasks:
 
@@ -105,7 +117,7 @@
 
   - name: Install required packages
     dnf:
-      name: [ 'arm-image-installer', 'bleachbit', 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'pandoc', 'snapd', 'tree', 'wipe', 'wl-clipboard']
+      name: [ 'arm-image-installer', 'bleachbit', 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'fuse-exfat', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'pandoc', 'snapd', 'tree', 'wipe', 'wl-clipboard']
       state: present
       enablerepo: "{{ item }}"
     with_items:
@@ -115,7 +127,7 @@
 
   - name: Fetch ccat tarball
     get_url:
-      url: https://github.com/jingweno/ccat/releases/download/v1.1.0/linux-amd64-1.1.0.tar.gz
+      url: https://github.com/jingweno/ccat/releases/download/v{{ ccat_version }}/linux-amd64-{{ ccat_version }}.tar.gz
       dest: ./tmp-downloads/ccat.tar.gz
 
   - name: Extract ccat tarball
@@ -123,7 +135,7 @@
 
   - name: Install ccat
     copy:
-      src: ./tmp/linux-amd64-1.1.0/ccat
+      src: ./tmp/linux-amd64-{{ ccat_version }}/ccat
       dest: /usr/local/bin
       mode: 0755
 
@@ -191,7 +203,7 @@
 
   - name: Fetch terraform zip archive
     get_url:
-      url: 'https://releases.hashicorp.com/terraform/0.11.13/terraform_0.11.13_linux_amd64.zip'
+      url: https://releases.hashicorp.com/terraform/{{ terraform_version }}/terraform_{{ terraform_version }}_linux_amd64.zip
       dest: ./tmp-downloads/terraform.zip
 
   - name: Unzip terraform zip archive
@@ -215,7 +227,7 @@
     become: yes
     command: "{{ item }}"
     with_items:
-      - sed -i 's/$releasever/29/g' /etc/yum.repos.d/docker-ce.repo
+      - sed -i 's/$releasever/{{ docker_release_version }}/g' /etc/yum.repos.d/docker-ce.repo
       - sed -i 's/$basearch/x86_64/g' /etc/yum.repos.d/docker-ce.repo
     notify:
       - Clean dnf metadata
@@ -235,8 +247,8 @@
 
   - name: Fetch golang tarball
     get_url: 
-      url: https://dl.google.com/go/{{ golang_version }}.tar.gz
-      dest: ./tmp-downloads/{{ golang_version }}.tar.gz
+      url: https://dl.google.com/go/go{{ golang_version }}.linux-amd64.tar.gz
+      dest: ./tmp-downloads/go{{ golang_version }}.linux-amd64.tar.gz
       mode: 0755
       owner: SoBeRBot94
       group: SoBeRBot94
@@ -245,7 +257,7 @@
 
   - name: Extract tarball
     become: yes
-    command: tar -C /usr/local/ -xvzf ./tmp-downloads/{{ golang_version }}.tar.gz
+    command: tar -C /usr/local/ -xvzf ./tmp-downloads/go{{ golang_version }}.linux-amd64.tar.gz
     tags:
       - golang
 
@@ -269,8 +281,8 @@
 
   - name: Fetch vpnbook openvpn certifiacte bundles
     get_url:
-      url: https://www.vpnbook.com/free-openvpn-account/VPNBook.com-OpenVPN-FR1.zip
-      dest: ./tmp-downloads/VPNBook.com-OpenVPN-FR1.zip
+      url: https://www.vpnbook.com/free-openvpn-account/VPNBook.com-OpenVPN-{{ openvpn_server_location }}.zip
+      dest: ./tmp-downloads/VPNBook.com-OpenVPN-{{ openvpn_server_location }}.zip
     tags:
       - openvpn
 
@@ -286,7 +298,7 @@
 
   - name: Setup vpnbook openvpn certificates
     unarchive:
-      src: ./tmp-downloads/VPNBook.com-OpenVPN-FR1.zip
+      src: ./tmp-downloads/VPNBook.com-OpenVPN-{{ openvpn_server_location }}.zip
       dest: ~SoBeRBot94/VPNBook
       owner: SoBeRBot94
       group: SoBeRBot94
@@ -304,7 +316,7 @@
 
   - name: Setup openvpn to fetch credentials from credentials file
     lineinfile:
-      path: ~SoBeRBot94/VPNBook/vpnbook-fr1-tcp80.ovpn
+      path: ~SoBeRBot94/VPNBook/vpnbook-de4-tcp80.ovpn
       regexp: '^auth-user-pass'
       line: auth-user-pass credentials.txt
     tags:
@@ -312,7 +324,7 @@
 
   - name: Fetch atom rpm
     get_url:
-      url: https://atom-installer.github.com/v1.37.0/atom.x86_64.rpm?s=1557846168&ext=.rpm
+      url: https://atom-installer.github.com/v{{ atom_version }}/atom.x86_64.rpm?s={{ atom_package_release_tag }}&ext=.rpm
       dest: ./tmp-downloads/atom.x86_64.rpm
       mode: 0755
       owner: SoBeRBot94
@@ -320,8 +332,8 @@
 
   - name: Fetch mailspring rpm
     get_url:
-      url: https://github.com/Foundry376/Mailspring/releases/download/{{ mailspring_version }}/{{ mailspring_rpm }}
-      dest: ./tmp-downloads/{{ mailspring_rpm }}
+      url: https://github.com/Foundry376/Mailspring/releases/download/{{ mailspring_version }}/mailspring-{{ mailspring_version }}-0.1.x86_64.rpm 
+      dest: ./tmp-downloads/mailspring-{{ mailspring_version }}-0.1.x86_64.rpm
       mode: 0755
       owner: SoBeRBot94
       group: SoBeRBot94
@@ -345,7 +357,7 @@
   - name: Install mailspring
     become: yes
     dnf:
-      name: ./tmp-downloads/{{ mailspring_rpm }}
+      name: ./tmp-downloads/{{ mailspring_version }}-0.1.x86_64.rpm
       state: present
     tags:
       - mailspring
@@ -506,7 +518,7 @@
 
   - name: Fetch hack font zip
     get_url:
-      url: https://github.com/ryanoasis/nerd-fonts/releases/download/v2.0.0/Hack.zip
+      url: https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ hack_font_version }}/Hack.zip
       dest: ./tmp-downloads/Hack.zip
 
   - name: Create hack font directory
