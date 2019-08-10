@@ -125,6 +125,15 @@
     tags:
       - packages
 
+  - name: Fetch dropbox rpm
+    get_url: https://linux.dropbox.com/packages/fedora/nautilus-dropbox-2019.02.14-1.fedora.x86_64.rpm
+    dest: ./tmp-downloads/dropbox.rpm
+
+  - name: Install dropbox
+    dnf:
+      name: ./tmp-downloads/dropbox.rpm
+      state: present
+
   - name: Fetch ccat tarball
     get_url:
       url: https://github.com/jingweno/ccat/releases/download/v{{ ccat_version }}/linux-amd64-{{ ccat_version }}.tar.gz
@@ -588,6 +597,11 @@
       state: touch
     tags:
       - ctrlp
+
+  - name: Install vim plugins
+    command: vim +PluginInstall +qall
+    args:
+      chdir: ~SoBeRBot94/.config/nvim/
 
   - name: Add flathub remote
     flatpak_remote:
