@@ -19,8 +19,9 @@
     atom_version: 1.39.1
 
     ccat_version: 1.1.0
-    
-    docker_release_version: 30
+
+    docker_repo_version: 30
+    fedora_release: 30
 
     golang_version: 1.12.7
 
@@ -87,8 +88,8 @@
 
   - name: Fetch rpm fusion packages
     get_url:
-      url: https://download1.rpmfusion.org/{{ item }}/fedora/rpmfusion-{{ item }}-release-30.noarch.rpm
-      dest: ./tmp-downloads/rpmfusion-{{ item }}-release-30.noarch.rpm
+      url: https://download1.rpmfusion.org/{{ item }}/fedora/rpmfusion-{{ item }}-release-{{ fedora_release }}.noarch.rpm
+      dest: ./tmp-downloads/rpmfusion-{{ item }}-release-{{ fedora_release }}.noarch.rpm
       mode: 0744
     with_items:
       - free
@@ -237,7 +238,7 @@
     become: yes
     command: "{{ item }}"
     with_items:
-      - sed -i 's/$releasever/{{ docker_release_version }}/g' /etc/yum.repos.d/docker-ce.repo
+      - sed -i 's/$releasever/{{ docker_repo_version }}/g' /etc/yum.repos.d/docker-ce.repo
       - sed -i 's/$basearch/x86_64/g' /etc/yum.repos.d/docker-ce.repo
     notify:
       - Clean dnf metadata
