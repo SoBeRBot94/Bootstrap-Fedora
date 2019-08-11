@@ -126,6 +126,13 @@
     tags:
       - packages
 
+  - name: Enable classic snap support
+    become: yes
+    file:
+      src: /var/lib/snapd/snap
+      dest: /snap
+      state: link
+
   - name: Fetch dropbox rpm
     get_url: 
       url: https://linux.dropbox.com/packages/fedora/nautilus-dropbox-2019.02.14-1.fedora.x86_64.rpm
