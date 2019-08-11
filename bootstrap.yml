@@ -338,52 +338,6 @@
     tags:
       - openvpn
 
-  - name: Fetch atom rpm
-    get_url:
-      url: https://atom-installer.github.com/v{{ atom_version }}/atom.x86_64.rpm?s={{ atom_package_release_tag }}&ext=.rpm
-      dest: ./tmp-downloads/atom.x86_64.rpm
-      mode: 0755
-      owner: SoBeRBot94
-      group: SoBeRBot94
-
-  - name: Fetch mailspring rpm
-    get_url:
-      url: https://github.com/Foundry376/Mailspring/releases/download/{{ mailspring_version }}/mailspring-{{ mailspring_version }}-0.1.x86_64.rpm 
-      dest: ./tmp-downloads/mailspring-{{ mailspring_version }}-0.1.x86_64.rpm
-      mode: 0755
-      owner: SoBeRBot94
-      group: SoBeRBot94
-    tags:
-      - mailspring
-
-  - name: Fetch skype rpm
-    get_url:
-      url: https://repo.skype.com/latest/skypeforlinux-64.rpm 
-      dest: ./tmp-downloads/skypeforlinux-64.rpm
-      mode: 0755
-      owner: SoBeRBot94
-      group: SoBeRBot94
-
-  - name: Install atom
-    become: yes
-    dnf:
-      name: ./tmp-downloads/atom.x86_64.rpm
-      state: present
-
-  - name: Install mailspring
-    become: yes
-    dnf:
-      name: ./tmp-downloads/{{ mailspring_version }}-0.1.x86_64.rpm
-      state: present
-    tags:
-      - mailspring
-
-  - name: Install skype
-    become: yes
-    dnf:
-      name: ./tmp-downloads/skypeforlinux-64.rpm
-      state: present
-
   - name: Install pip development packages
     pip:
       name: [ 'icdiff' ]
@@ -643,6 +597,17 @@
       - org.keepassxc.KeePassXC
       - org.libreoffice.LibreOffice
       - org.videolan.VLC
+
+  - name: Install required snaps
+    snap:
+      name: "{{ item.name }}"
+      state: present
+      classic: "{{ item.classic }}"
+      channel: "{{ item.channel }}"
+    with_items:
+      - { name: 'atom', classic: 'yes', channel: 'stable' }
+      - { name: 'mailspring', classic: 'no', channel: 'stable' }
+      - { name: 'skype', classic: 'yes', channel: 'stable' }
 
   - name: Set tap to click
     become: SoBeRBot94
