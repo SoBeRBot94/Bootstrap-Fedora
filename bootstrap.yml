@@ -87,8 +87,8 @@
 
   - name: Fetch rpm fusion packages
     get_url:
-      url: https://download1.rpmfusion.org/{{ item }}/fedora/rpmfusion-{{ item }}-release-rawhide.noarch.rpm
-      dest: ./tmp-downloads/rpmfusion-{{ item }}-release-rawhide.noarch.rpm
+      url: https://download1.rpmfusion.org/{{ item }}/fedora/rpmfusion-{{ item }}-release-30.noarch.rpm
+      dest: ./tmp-downloads/rpmfusion-{{ item }}-release-30.noarch.rpm
       mode: 0744
     with_items:
       - free
@@ -117,7 +117,7 @@
 
   - name: Install required packages
     dnf:
-      name: [ 'arm-image-installer', 'bleachbit', 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'fuse-exfat', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'pandoc', 'snapd', 'tree', 'wipe', 'wl-clipboard']
+      name: [ 'arm-image-installer', 'bleachbit', 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'fuse-exfat', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'pandoc', 'snapd', 'tree', 'wipe' ]
       state: present
       enablerepo: "{{ item }}"
     with_items:
@@ -126,8 +126,9 @@
       - packages
 
   - name: Fetch dropbox rpm
-    get_url: https://linux.dropbox.com/packages/fedora/nautilus-dropbox-2019.02.14-1.fedora.x86_64.rpm
-    dest: ./tmp-downloads/dropbox.rpm
+    get_url: 
+      url: https://linux.dropbox.com/packages/fedora/nautilus-dropbox-2019.02.14-1.fedora.x86_64.rpm
+      dest: ./tmp-downloads/dropbox.rpm
 
   - name: Install dropbox
     dnf:
@@ -484,9 +485,11 @@
     with_items: "{{ users }}"
 
   - name: Change default shell to zsh
-    become: no
+    become: yes
     become_user: "{{ item }}"
-    command: chsh -s /usr/bin/zsh
+    user:
+      name: "{{ item }}"
+      shell: /usr/bin/zsh
     with_items: "{{ users }}"
 
   - name: Remove existing zshrc file [Root]
@@ -549,6 +552,14 @@
       key: "/org/gnome/desktop/interface/text-scaling-factor"
       value: '1.15'
 
+  - name: Create nvim directory
+    file:
+      path: ~SoBeRBot94/.config/nvim
+      state: directory
+      owner: SoBeRBot94
+      group: SoBeRBot94
+      mode: 0755
+
   - name: Create symbolic links for init.vim [SoBeRBot94]
     become: no
     become_user: SoBeRBot94
@@ -599,7 +610,7 @@
       - ctrlp
 
   - name: Install vim plugins
-    command: vim +PluginInstall +qall
+    command: nvim +PluginInstall +qall
     args:
       chdir: ~SoBeRBot94/.config/nvim/
 
@@ -664,33 +675,33 @@
     become: SoBeRBot94
     dconf:
       key: "/org/gnome/shell/extensions/user-theme/name"
-      value: "'Flat-Remix-Darkest'"
+      value: "'Flat-Remix-Darkest-fullPanel'"
 
   - name: Set gtk theme
     become: SoBeRBot94
     dconf:
       key: "/org/gnome/desktop/interface/gtk-theme"
-      value: "'Flat-Remix-GTK-Blue-Darkest-Solid-NoBorder'"
+      value: "'Flat-Remix-GTK-Blue-Darkest-NoBorder'"
 
   - name: Enable Copr Repo for La Capitaine Cursor & Icon Themes
     command: dnf copr enable tcg/themes -y
 
   - name: Install La Capitaine Cursor & Icon Themes
     dnf:
-      name: [ 'la-capitaine-cursor-theme', 'la-capitaine-cursor-theme' ]
+      name: [ 'la-capitaine-cursor-theme', 'la-capitaine-icon-theme' ]
       state: present
 
   - name: Set cursor theme
     become: SoBeRBot94
     dconf:
       key: "/org/gnome/desktop/interface/cursor-theme"
-      value: "'la-capitaine-cursor-theme'"
+      value: "'La Capitaine'"
 
   - name: Set icon theme
     become: SoBeRBot94
     dconf:
       key: "/org/gnome/desktop/interface/icon-theme"
-      value: "'la-capitaine-icon-theme'"
+      value: "'La Capitaine (Dark GTK, Dark Panel)'"
 
   - name: Enable fractional scaling for high dpi monitors
     become: SoBeRBot94
