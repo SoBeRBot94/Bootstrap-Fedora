@@ -194,8 +194,6 @@
         }
         });
       dest: /etc/polkit-1/rules.d/80-libvirt.rules
-    notify:
-      - Start libvirtd service
 
   - name: Install vagrant
     dnf:
@@ -736,10 +734,4 @@
     become: yes
     systemd:
       name: docker
-      state: restarted
-
-  - name: Start libvirtd service
-    become: yes
-    systemd:
-      name: libvirtd
       state: restarted
