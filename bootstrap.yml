@@ -41,6 +41,24 @@
 
   tasks:
 
+  - name: Set Hostname
+    hostname:
+      name: UX305LA
+
+  - name: Edit /etc/hostname
+    lineinfile:
+      path: /etc/hostname
+      regexp: '^localhost.localdomain'
+      line: 'UX305LA'
+      state: present
+
+  - name: Edit /etc/hosts
+    lineinfile:
+      path: /etc/hosts
+      line: '127.0.0.1  UX305LA'
+      insertbefore: BOF
+      state: present
+
   - name: Disable SELinux
     lineinfile:
       path: /etc/selinux/config
@@ -118,13 +136,11 @@
 
   - name: Install required packages
     dnf:
-      name: [ 'arm-image-installer', 'bleachbit', 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'fuse-exfat', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'pandoc', 'snapd', 'tree', 'wipe' ]
+      name: [ 'arm-image-installer', 'bleachbit', 'chrome-gnome-shell', 'dconf-editor', 'dc3dd', 'deluge', 'fuse-exfat', 'gnome-tweak-tool', 'google-chrome-stable', 'hdparm', 'most', 'nmap', 'openvpn', 'pandoc', 'snapd', 'tree', 'unrar', 'wipe' ]
       state: present
       enablerepo: "{{ item }}"
     with_items:
       - google-chrome
-    tags:
-      - packages
 
   - name: Enable classic snap support
     become: yes
@@ -159,8 +175,9 @@
 
   - name: Setup machine for kvm virtualization
     dnf:
-      name: '@virtualization'
+      name: [ 'bridge-utils', 'guestfs-browser', 'libguestfs-tools', 'python-libguestfs', 'virt-top', '@virtualization' ]
       state: present
+
 
   - name: Create libvirt group
     group:
@@ -189,8 +206,6 @@
     with_items:
       - { regexp: '^#unix_sock_group = "libvirt"', replace: 'unix_sock_group = "libvirt"' }
       - { regexp: '^#unix_sock_rw_perms = "0770"', replace: 'unix_sock_rw_perms = "0770"'}
-    tags:
-      - libvirt
 
   - name: Edit polkit rules for granting access to an unprivilaged user to libvirt APIs
     copy:
@@ -207,6 +222,12 @@
       name: vagrant
       state: present
 
+  - name: Disable vagrant plugin strict dependency enforcement
+    lineinfile:
+      path: ~SoBeRBot94/DotFiles/zshrc
+      line: 'export VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1'
+      state: present
+
   - name: Install vagrant plugins [ dnf ]
     dnf:
       name: "{{ item }}"
@@ -214,8 +235,6 @@
     with_items:
       - vagrant-libvirt
       - vagrant-sshfs
-    tags:
-      - vagrant-plugins-dnf
 
   - name: Install dependencies for virtualbox
     dnf:
@@ -227,23 +246,17 @@
       - dkms
       - elfutils-libelf-devel
       - qt5-qtx11extras
-    tags:
-      - virtualbox
 
   - name: Install virtualbox
     dnf:
       name: VirtualBox
       state: present
-    tags:
-      - virtualbox
 
   - name: Add user to virtualbox group
     user:
       name: SoBeRBot94
       groups: vboxusers
       append: yes
-    tags:
-      - virtualbox
 
   - name: Fetch terraform zip archive
     get_url:
@@ -286,8 +299,6 @@
       - docker-ce
     notify:
       - Enable supervisord service
-    tags:
-      - dnf-devel
 
   - name: Fetch golang tarball
     get_url: 
@@ -296,14 +307,10 @@
       mode: 0755
       owner: SoBeRBot94
       group: SoBeRBot94
-    tags:
-      - golang
 
   - name: Extract tarball
     become: yes
     command: tar -C /usr/local/ -xvzf ./tmp-downloads/go{{ golang_version }}.linux-amd64.tar.gz
-    tags:
-      - golang
 
   - name: Clone dotfiles repo
     become_user: SoBeRBot94
@@ -320,15 +327,11 @@
       state: link
       owner: root
       group: root
-    tags:
-      - openvpn
 
   - name: Fetch vpnbook openvpn certifiacte bundles
     get_url:
       url: https://www.vpnbook.com/free-openvpn-account/VPNBook.com-OpenVPN-{{ openvpn_server_location }}.zip
       dest: ./tmp-downloads/VPNBook.com-OpenVPN-{{ openvpn_server_location }}.zip
-    tags:
-      - openvpn
 
   - name: Create vpnbook directory
     file:
@@ -337,8 +340,6 @@
       owner: SoBeRBot94
       group: SoBeRBot94
       mode: '0755'
-    tags:
-      - openvpn
 
   - name: Setup vpnbook openvpn certificates
     unarchive:
@@ -346,8 +347,6 @@
       dest: ~SoBeRBot94/VPNBook
       owner: SoBeRBot94
       group: SoBeRBot94
-    tags:
-      - openvpn
 
   - name: Setup vpnbook openvpn credentials
     template:
@@ -355,20 +354,16 @@
       dest: ~SoBeRBot94/VPNBook/credentials.txt
       owner: SoBeRBot94
       group: SoBeRBot94
-    tags:
-      - openvpn
 
   - name: Setup openvpn to fetch credentials from credentials file
     lineinfile:
       path: ~SoBeRBot94/VPNBook/vpnbook-de4-tcp80.ovpn
       regexp: '^auth-user-pass'
       line: auth-user-pass credentials.txt
-    tags:
-      - openvpn
 
   - name: Install pip development packages
     pip:
-      name: [ 'icdiff' ]
+      name: [ 'fabric3', 'icdiff' ]
       state: present
       executable: pip3
 
@@ -584,8 +579,6 @@
       clone: yes
       force: yes
       dest: ~SoBeRBot94/.config/nvim/bundle/ctrlp.vim
-    tags:
-      - ctrlp
 
   - name: Change ownership of ctrl-p
     become: yes
@@ -594,8 +587,6 @@
       owner: SoBeRBot94
       group: SoBeRBot94
       state: touch
-    tags:
-      - ctrlp
 
   - name: Install vim plugins
     command: nvim +PluginInstall +qall
