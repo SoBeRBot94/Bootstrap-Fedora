@@ -159,6 +159,21 @@
       name: ./tmp-downloads/dropbox.rpm
       state: present
 
+  - name: Add Mega Repo
+    yum_repository:
+      name: mega
+      description: Mega-Cloud Repository for Fedora
+      baseurl: https://mega.nz/linux/MEGAsync/Fedora_$releasever/
+      enabled: yes
+      gpgcheck: no
+    notify:
+      - Update dnf cache
+
+  - name: Install Mega
+    dnf:
+      name: [ 'megacmd', 'megasync', 'nautilus-megasync' ]
+      state: latest
+
   - name: Fetch ccat tarball
     get_url:
       url: https://github.com/jingweno/ccat/releases/download/v{{ ccat_version }}/linux-amd64-{{ ccat_version }}.tar.gz
