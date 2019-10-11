@@ -307,7 +307,7 @@
 
   - name: Install dnf development packages
     dnf:
-      name: [ 'containerd.io', 'docker-ce', 'docker-ce-cli', 'httpie', 'python3-lxml', 'neovim', 'python3-neovim', 'python3-psutil', 'python3-virtualenv', 'supervisor', 'tunctl', 'util-linux-user', 'zsh']
+      name: [ 'containerd.io', 'docker-ce', 'docker-ce-cli', 'docker-compose', 'httpie', 'python3-lxml', 'neovim', 'python3-neovim', 'python3-psutil', 'python3-virtualenv', 'supervisor', 'tunctl', 'util-linux-user', 'zsh']
       state: present
       enablerepo: "{{ item }}"
     with_items:
